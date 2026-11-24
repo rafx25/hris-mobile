@@ -1,6 +1,13 @@
 // base url of the project api, from .env
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+// token for POST requests after login, set from auth/routes
+let csrfToken = "";
+
+export function setCsrfToken(token) {
+  csrfToken = token;
+}
+
 // Get request, returns json
 export async function apiGet(path) {
   const res = await fetch(API_URL + path, { credentials: "include" });
@@ -14,6 +21,7 @@ export async function apiPost(path, body) {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
     },
     body: JSON.stringify(body),
   });
