@@ -14,11 +14,14 @@ export default function LoginScreen({ onLoggedIn }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bioLabel, setBioLabel] = useState(""); // empty means no biometric button
+  const [phoneLock, setPhoneLock] = useState(false); // true if the phone has fingerprint, face or pin
 
   // show the biometric button only if the phone has a lock and a login is saved
   useEffect(() => {
     async function checkBiometric() {
-      if ((await canUseBiometric()) && (await hasSavedLogin())) {
+      const hasLock = await canUseBiometric();
+      setPhoneLock(hasLock);
+      if (hasLock && (await hasSavedLogin())) {
         setBioLabel(await biometricLabel());
       }
     }
@@ -88,7 +91,13 @@ export default function LoginScreen({ onLoggedIn }) {
       });
 
       if (data.status) {
-        await finishLogin(username, password, false);
+        if (remember && phoneLock) {
+          // phone is now trusted by the server, biometric sign-in skips the code
+          await saveLogin(username, password);
+          onLoggedIn();
+        } else {
+          await finishLogin(username, password, false);
+        }
       } else if (data.expired) {
         backToPassword();
         setError(data.message);
@@ -187,7 +196,7 @@ export default function LoginScreen({ onLoggedIn }) {
           <TextInput style={styles.input} placeholder="Code or backup code" value={code} onChangeText={setCode} autoCapitalize="none" autoFocus />
           <View style={styles.row}>
             <Switch value={remember} onValueChange={setRemember} />
-            <Text style={styles.rowText}>Remember this phone for 15 days</Text>
+            <Text style={styles.rowText}>{phoneLock ? "Use phone lock next time, skip the code for 15 days" : "Remember this phone for 15 days"}</Text>
           </View>
         </>
       )}
