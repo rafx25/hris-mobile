@@ -4,6 +4,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import RequestsScreen from "./src/screens/RequestsScreen";
+import RequestDetailScreen from "./src/screens/RequestDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -14,9 +16,15 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator>
         {loggedIn ? (
-          <Stack.Screen name="Home" options={{ title: "Leave Credits" }}>
-            {(props) => <HomeScreen {...props} onLoggedOut={() => setLoggedIn(false)} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="Home" options={{ title: "Leave Credits" }}>
+              {(props) => <HomeScreen {...props} onLoggedOut={() => setLoggedIn(false)} />}
+            </Stack.Screen>
+            <Stack.Screen name="Requests" options={{ title: "My Leave Requests" }}>
+              {(props) => <RequestsScreen {...props} onLoggedOut={() => setLoggedIn(false)} />}
+            </Stack.Screen>
+            <Stack.Screen name="RequestDetail" component={RequestDetailScreen} options={{ title: "Request Details" }} />
+          </>
         ) : (
           <Stack.Screen name="Login" options={{ headerShown: false }}>
             {(props) => <LoginScreen {...props} onLoggedIn={() => setLoggedIn(true)} />}
