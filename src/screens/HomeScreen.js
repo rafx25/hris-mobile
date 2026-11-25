@@ -10,7 +10,7 @@ function today() {
   return `${d.getFullYear()}-${month}-${day}`;
 }
 
-export default function HomeScreen({ onLoggedOut }) {
+export default function HomeScreen({ navigation, onLoggedOut }) {
   const [name, setName] = useState("");
   const [credits, setCredits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +92,10 @@ export default function HomeScreen({ onLoggedOut }) {
       ListHeaderComponent={
         <View>
           <Text style={styles.hello}>Hi, {name}!</Text>
+          <Pressable style={styles.menu} onPress={() => navigation.navigate("Requests")}>
+            <Text style={styles.menuText}>My Leave Requests</Text>
+            <Text style={styles.menuText}>›</Text>
+          </Pressable>
           <Text style={styles.sub}>Leave credits as of {today()}</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
@@ -126,4 +130,6 @@ const styles = StyleSheet.create({
   pending: { color: "#ef6c00", marginTop: 4 },
   logout: { marginTop: 24, padding: 14, borderRadius: 8, borderWidth: 1, borderColor: "#c62828", alignItems: "center" },
   logoutText: { color: "#c62828", fontWeight: "bold" },
+  menu: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#1565c0", borderRadius: 12, padding: 16, marginVertical: 16 },
+  menuText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
