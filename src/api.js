@@ -27,3 +27,22 @@ export async function apiPost(path, body) {
   });
   return res.json();
 }
+
+// POST with a file, uses XMLHttpRequest because it can read the file from its uri
+export function apiPostForm(path, form) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", API_URL + path);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("X-CSRF-Token", csrfToken);
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network request failed"));
+    xhr.send(form);
+  });
+}

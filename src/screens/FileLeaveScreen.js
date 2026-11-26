@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { apiGet, apiPost } from "../api";
+import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
+import { apiGet, apiPostForm } from "../api";
 import { toYmd } from "../dates";
 
 // leave types that always ask for a reason
 const REASON_TYPE = [110];
+
+// leave ids and detail id used by the attachment rules
+const SICK_LEAVE = 102;
+const MATERNITY_LEAVE = 103;
+const SPECIAL_LEAVE_WOMEN = 110;
+const WELLNESS_LEAVE = 113;
+const ABROAD_DETAIL = 201;
 
 // server sends a message as text or as a list of text
 function messageText(res) {
@@ -28,6 +37,7 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [file, setFile] = useState(null);
 
   // leave types for the picker
   useEffect(() => {
@@ -55,6 +65,7 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
   useEffect(() => {
     if (!typeId) return;
     setDetailId(null);
+    setFile(null);
     apiGet(`leave_application/leave_detail_selection?leave_type_id=${typeId}`)
       .then((res) => setDetails(res.status ? res.data : []))
       .catch(() => setDetails([]));
@@ -80,11 +91,11 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
       .catch(() => setDays(0));
   }, [typeId, start, end, halfDay]);
 
-  // date picker closed, save the picked date
+  // a date was picked, save it to start or end
   function handleDate(event, date) {
     const field = picking;
     setPicking(null);
-    if (event.type !== "set" || !date) return;
+    if (!date) return;
 
     if (field === "start") {
       setStart(date);
@@ -94,24 +105,54 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
     }
   }
 
+  // let the user pick a pdf or photo from the phone
+  async function pickFile() {
+    const pdfOnly = typeId === MATERNITY_LEAVE;
+    const result = await DocumentPicker.getDocumentAsync({
+      type: pdfOnly ? "application/pdf" : ["image/jpeg", "image/png", "application/pdf"],
+      copyToCacheDirectory: true,
+    });
+
+    if (result.canceled) return;
+
+    const picked = result.assets[0];
+    const maxMb = pdfOnly ? 5 : 3;
+    if (picked.size > maxMb * 1024 * 1024) {
+      setError(`File is too big. Max ${maxMb} MB.`);
+      return;
+    }
+    setError("");
+    setFile(picked);
+  }
+
   async function handleSubmit() {
     if (!typeId) {
       setError("Pick a leave type");
       return;
     }
+
+    if (needsFile && !file) {
+      setError("Attach a file for this leave.");
+      return;
+    }
+
     setSending(true);
     setError("");
     try {
-      const res = await apiPost("leave_application/submit_leave_request", {
-        leave_type_id: typeId,
-        leave_detail_id: detailId || "",
-        start_date: toYmd(start),
-        end_date: toYmd(halfDay ? start : end),
-        total_days: days,
-        day_type: halfDay ? "HALF" : "WHOLE",
-        am_pm: halfDay ? amPm : "",
-        location_reason: reason,
-      });
+      const form = new FormData();
+      form.append("leave_type_id", String(typeId));
+      form.append("leave_detail_id", detailId ? String(detailId) : "");
+      form.append("start_date", toYmd(start));
+      form.append("end_date", toYmd(halfDay ? start : end));
+      form.append("total_days", String(days));
+      form.append("day_type", halfDay ? "HALF" : "WHOLE");
+      form.append("am_pm", halfDay ? amPm : "");
+      form.append("location_reason", reason);
+      if (file) {
+        form.append("attachment", { uri: file.uri, name: file.name, type: file.mimeType });
+      }
+
+      const res = await apiPostForm("leave_application/submit_leave_request", form);
 
       if (res.status) {
         Alert.alert("Leave filed", messageText(res));
@@ -122,6 +163,7 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
         setError(messageText(res));
       }
     } catch (e) {
+      console.log(e);
       setError("Cannot reach the server. Try again.");
     } finally {
       setSending(false);
@@ -132,6 +174,7 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
   const metaType = (detail?.meta_type || "").toUpperCase();
   const needsReason = REASON_TYPE.includes(typeId) || metaType === "LOCATION" || metaType === "REASON";
   const reasonLabel = metaType === "LOCATION" ? "Location" : "Reason";
+  const needsFile = (typeId === SICK_LEAVE && days >= 5) || typeId === MATERNITY_LEAVE || typeId === SPECIAL_LEAVE_WOMEN || (detailId === ABROAD_DETAIL && typeId !== WELLNESS_LEAVE);
 
   if (loading) {
     return (
@@ -193,7 +236,7 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
         </>
       ) : null}
 
-      {picking ? <DateTimePicker value={picking === "start" ? start : end} mode="date" onChange={handleDate} /> : null}
+      {picking ? <DateTimePicker value={picking === "start" ? start : end} mode="date" onValueChange={handleDate} onDismiss={() => setPicking(null)} /> : null}
 
       {needsReason ? (
         <>
@@ -201,6 +244,22 @@ export default function FileLeaveScreen({ navigation, onLoggedOut }) {
           <TextInput style={styles.input} value={reason} onChangeText={setReason} placeholder={`Enter ${reasonLabel.toLowerCase()}`} multiline />
         </>
       ) : null}
+
+      <Text style={styles.label}>Attachment {needsFile ? "(required)" : "(optional)"}</Text>
+      {file ? (
+        <View style={styles.fileRow}>
+          <Text style={styles.fileName} numberOfLines={1}>
+            {file.name}
+          </Text>
+          <Pressable onPress={() => setFile(null)}>
+            <Text style={styles.remove}>Remove</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable style={styles.input} onPress={pickFile}>
+          <Text style={styles.pickText}>{typeId === MATERNITY_LEAVE ? "Choose PDF (max 5 MB)" : "Choose JPG, PNG, or PDF (max 3 MB)"}</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.days}>Total: {days} day(s)</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -236,4 +295,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#1565c0", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 20 },
   buttonOff: { opacity: 0.6 },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  fileRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#cfd8dc", borderRadius: 8, padding: 12 },
+  fileName: { flex: 1, marginRight: 12 },
+  remove: { color: "#c62828", fontWeight: "600" },
+  pickText: { color: "#1565c0" },
 });
