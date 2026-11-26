@@ -6,6 +6,7 @@ import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import RequestsScreen from "./src/screens/RequestsScreen";
 import RequestDetailScreen from "./src/screens/RequestDetailScreen";
+import FileLeaveScreen from "./src/screens/FileLeaveScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,9 @@ export default function App() {
               {(props) => <RequestsScreen {...props} onLoggedOut={() => setLoggedIn(false)} />}
             </Stack.Screen>
             <Stack.Screen name="RequestDetail" component={RequestDetailScreen} options={{ title: "Request Details" }} />
+            <Stack.Screen name="FileLeave" options={{ title: "File Leave" }}>
+              {(props) => <FileLeaveScreen {...props} onLoggedOut={() => setLoggedIn(false)} />}
+            </Stack.Screen>
           </>
         ) : (
           <Stack.Screen name="Login" options={{ headerShown: false }}>

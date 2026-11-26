@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { apiGet, apiPost, setCsrfToken } from "../api";
-
-// today as YYYY-MM-DD in the phones's local time
-function today() {
-  const d = new Date();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${month}-${day}`;
-}
+import { toYmd } from "../dates";
 
 export default function HomeScreen({ navigation, onLoggedOut }) {
   const [name, setName] = useState("");
@@ -37,7 +30,7 @@ export default function HomeScreen({ navigation, onLoggedOut }) {
         return;
       }
 
-      const res = await apiGet("leave_application/credits_as_of?as_of=" + today());
+      const res = await apiGet("leave_application/credits_as_of?as_of=" + toYmd());
       if (!res.status) {
         setError(res.message || "Cannot load leave credits.");
         return;
@@ -93,10 +86,14 @@ export default function HomeScreen({ navigation, onLoggedOut }) {
         <View>
           <Text style={styles.hello}>Hi, {name}!</Text>
           <Pressable style={styles.menu} onPress={() => navigation.navigate("Requests")}>
+            <Pressable style={styles.menu} onPress={() => navigation.navigate("FileLeave")}>
+              <Text style={styles.menuText}>File Leave</Text>
+              <Text style={styles.menuText}>+</Text>
+            </Pressable>
             <Text style={styles.menuText}>My Leave Requests</Text>
             <Text style={styles.menuText}>›</Text>
           </Pressable>
-          <Text style={styles.sub}>Leave credits as of {today()}</Text>
+          <Text style={styles.sub}>Leave credits as of {toYmd()}</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       }
