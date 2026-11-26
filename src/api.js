@@ -28,13 +28,21 @@ export async function apiPost(path, body) {
   return res.json();
 }
 
-// POST with a file, fetch sets the multipart header by itself
-export async function apiPostForm(path, form) {
-  const res = await fetch(API_URL + path, {
-    method: "POST",
-    credentials: "include",
-    headers: { "X-CSRF-Token": csrfToken },
-    body: form,
+// POST with a file, uses XMLHttpRequest because it can read the file from its uri
+export function apiPostForm(path, form) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", API_URL + path);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("X-CSRF-Token", csrfToken);
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network request failed"));
+    xhr.send(form);
   });
-  return res.json();
 }
