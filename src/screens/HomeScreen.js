@@ -86,6 +86,10 @@ export default function HomeScreen({ navigation, onLoggedOut }) {
         <View>
           <Text style={styles.hello}>Hi, {name}!</Text>
           <Pressable style={styles.menu} onPress={() => navigation.navigate("Requests")}>
+            <Pressable style={styles.menu} onPress={() => navigation.navigate("FileLeave")}>
+              <Text style={styles.menuText}>File Leave</Text>
+              <Text style={styles.menuText}>+</Text>
+            </Pressable>
             <Text style={styles.menuText}>My Leave Requests</Text>
             <Text style={styles.menuText}>›</Text>
           </Pressable>
