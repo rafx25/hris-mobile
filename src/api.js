@@ -27,3 +27,14 @@ export async function apiPost(path, body) {
   });
   return res.json();
 }
+
+// POST with a file, fetch sets the multipart header by itself
+export async function apiPostForm(path, form) {
+  const res = await fetch(API_URL + path, {
+    method: "POST",
+    credentials: "include",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: form,
+  });
+  return res.json();
+}
